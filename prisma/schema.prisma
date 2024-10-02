@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Subject {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  questions Question[]
+}
+
+model Year {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  questions Question[]
+}
+
+model Course {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  questions Question[]
+}
+
+model Question {
+  id        Int     @id @default(autoincrement())
+  text      String
+  options   String
+  answer    String
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  subjectId Int
+  year      Year    @relation(fields: [yearId], references: [id])
+  yearId    Int
+  course    Course  @relation(fields: [courseId], references: [id])
+  courseId  Int
+}

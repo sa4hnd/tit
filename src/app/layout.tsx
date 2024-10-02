@@ -1,12 +1,13 @@
 import { Metadata } from 'next';
 import * as React from 'react';
+import { Toaster } from 'sonner';
 
 import '@/styles/globals.css';
-// !STARTERCONF This is for demo purposes, remove @/styles/colors.css import immediately
 import '@/styles/colors.css';
 
 import { siteConfig } from '@/constant/config';
 
+// !STARTERCONF This is for demo purposes, remove @/styles/colors.css import immediately
 // !STARTERCONF Change these default meta
 // !STARTERCONF Look at @/constant/config to change them
 export const metadata: Metadata = {
@@ -49,14 +50,13 @@ export const metadata: Metadata = {
   // ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html>
-      <body>{children}</body>
+    <html lang='en'>
+      <body>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }

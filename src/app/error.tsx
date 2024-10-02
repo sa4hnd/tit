@@ -1,9 +1,8 @@
 'use client'; // Error components must be Client Components
 
 import * as React from 'react';
-import { RiAlarmWarningFill } from 'react-icons/ri';
-
-import TextButton from '@/components/buttons/TextButton';
+import { AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Error({
   error,
@@ -19,18 +18,15 @@ export default function Error({
 
   return (
     <main>
-      <section className='bg-white'>
-        <div className='layout flex min-h-screen flex-col items-center justify-center text-center text-black'>
-          <RiAlarmWarningFill
-            size={60}
-            className='drop-shadow-glow animate-flicker text-red-500'
-          />
-          <h1 className='mt-8 text-4xl md:text-6xl'>
+      <section className='bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900'>
+        <div className='flex min-h-screen flex-col items-center justify-center text-center text-white'>
+          <AlertCircle size={60} className='animate-pulse text-red-500' />
+          <h1 className='mt-8 text-4xl md:text-6xl font-bold'>
             Oops, something went wrong!
           </h1>
-          <TextButton variant='basic' onClick={reset} className='mt-4'>
+          <Button onClick={reset} className='mt-4'>
             Try again
-          </TextButton>
+          </Button>
         </div>
       </section>
     </main>
