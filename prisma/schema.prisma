@@ -37,3 +37,31 @@ model Question {
   course    Course  @relation(fields: [courseId], references: [id])
   courseId  Int
 }
+
+model User {
+  id              String   @id @default(cuid())
+  firebaseUid     String   @unique
+  email           String   @unique
+  displayName     String?
+  photoURL        String?
+  emailVerified   Boolean  @default(false)
+  isAdmin         Boolean  @default(false)
+  isBanned        Boolean  @default(false)
+  hasAccess       Boolean  @default(false)
+  streakDays      Int      @default(0)
+  quizzesTaken    Int      @default(0)
+  totalScore      Int      @default(0)
+  averageScore    Float    @default(0)
+  lastStreakUpdate DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  quizzes         Quiz[]
+}
+
+model Quiz {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  score     Int
+  createdAt DateTime @default(now())
+}

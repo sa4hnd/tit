@@ -7,9 +7,19 @@ export async function GET() {
     return NextResponse.json(courses);
   } catch (error) {
     console.error('Error fetching courses:', error);
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { name } = await request.json();
+    const course = await prisma.course.create({
+      data: { name },
+    });
+    return NextResponse.json(course);
+  } catch (error) {
+    console.error('Error creating course:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -18,6 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { UserIcon } from 'lucide-react';
+import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface Subject {
   id: number;
@@ -42,6 +47,16 @@ export default function HomePage() {
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const router = useRouter();
+  const { user, signOut, hasAccess } = useAuth();
+  const [recentQuizzes, setRecentQuizzes] = useState([]);
+  const [userStats, setUserStats] = useState({
+    quizzesTaken: 0,
+    averageScore: 0,
+    streakDays: 0
+  });
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [streakDay, setStreakDay] = useState(0);
+  const [canUpdateStreak, setCanUpdateStreak] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -66,6 +81,70 @@ export default function HomePage() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (user && hasAccess) {
+      fetchRecentQuizzes();
+    }
+  }, [user, hasAccess]);
+
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`/api/user-stats?userId=${user.id}`);
+          const data = await response.json();
+          setUserStats(data);
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+          toast.error('Failed to load user statistics');
+        }
+      }
+    };
+
+    fetchUserStats();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const response = await fetch('/api/leaderboard');
+        const data = await response.json();
+        setLeaderboard(data);
+      } catch (error) {
+        console.error('Error fetching leaderboard:', error);
+      }
+    };
+
+    fetchLeaderboard();
+  }, []);
+
+  useEffect(() => {
+    const checkStreak = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`/api/user-streak?userId=${user.id}`);
+          const data = await response.json();
+          setStreakDay(data.streakDays);
+          setCanUpdateStreak(data.canUpdateStreak);
+        } catch (error) {
+          console.error('Error checking streak:', error);
+        }
+      }
+    };
+
+    checkStreak();
+  }, [user]);
+
+  const fetchRecentQuizzes = async () => {
+    try {
+      const response = await fetch(`/api/user-stats?userId=${user.id}`);
+      const data = await response.json();
+      setRecentQuizzes(data.recentQuizzes);
+    } catch (error) {
+      console.error('Error fetching recent quizzes:', error);
+    }
+  };
+
   const handleStartQuiz = () => {
     if (selectedSubject && selectedYear && selectedCourse) {
       router.push(
@@ -74,27 +153,58 @@ export default function HomePage() {
     }
   };
 
+  const handleUpdateStreak = async () => {
+    if (user && canUpdateStreak) {
+      try {
+        const response = await fetch('/api/user-streak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        });
+        const data = await response.json();
+        setStreakDay(data.streakDays);
+        setCanUpdateStreak(false);
+        toast.success('Streak updated!');
+      } catch (error) {
+        console.error('Error updating streak:', error);
+        toast.error('Failed to update streak');
+      }
+    }
+  };
+
   return (
     <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 p-6'>
-      <h1 className='text-white text-4xl font-bold mb-8 text-center'>
-        Welcome to Fergeh
-      </h1>
+      <header className='flex justify-between items-center mb-8'>
+        <h1 className='text-white text-4xl font-bold'>Welcome to Fergeh</h1>
+        {user ? (
+          <Link href="/profile">
+            <UserIcon className='text-white w-8 h-8 cursor-pointer' />
+          </Link>
+        ) : (
+          <Link href="/login">
+            <Button className='bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-2 px-4 rounded-2xl transition-transform transform hover:scale-105'>
+              Sign In
+            </Button>
+          </Link>
+        )}
+      </header>
+
       <main className='space-y-8'>
         {/* User Stats */}
         <section className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-6'>
           <h2 className='text-white text-xl font-bold mb-4'>Your Progress</h2>
-          <div className='grid grid-cols-3 gap-4'>
-            <div className='bg-pink-500 bg-opacity-20 rounded-2xl p-4 text-center'>
-              <p className='text-white text-2xl font-bold'>42</p>
-              <p className='text-white text-sm'>Quizzes Taken</p>
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="bg-purple-600 bg-opacity-50 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center">
+              <h3 className="text-white text-lg font-bold mb-2">Quizzes Taken</h3>
+              <p className="text-white text-3xl font-bold">{userStats.quizzesTaken}</p>
             </div>
-            <div className='bg-blue-500 bg-opacity-20 rounded-2xl p-4 text-center'>
-              <p className='text-white text-2xl font-bold'>78%</p>
-              <p className='text-white text-sm'>Avg. Score</p>
+            <div className="bg-blue-600 bg-opacity-50 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center">
+              <h3 className="text-white text-lg font-bold mb-2">Avg. Score</h3>
+              <p className="text-white text-3xl font-bold">{userStats.averageScore}%</p>
             </div>
-            <div className='bg-green-500 bg-opacity-20 rounded-2xl p-4 text-center'>
-              <p className='text-white text-2xl font-bold'>15</p>
-              <p className='text-white text-sm'>Streak Days</p>
+            <div className="bg-green-600 bg-opacity-50 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center">
+              <h3 className="text-white text-lg font-bold mb-2">Streak Days</h3>
+              <p className="text-white text-3xl font-bold">{userStats.streakDays}</p>
             </div>
           </div>
         </section>
@@ -240,6 +350,41 @@ export default function HomePage() {
             View Full Leaderboard
           </button>
         </section>
+
+        {user && hasAccess && (
+          <div className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-6 mt-6">
+            <h2 className="text-white text-2xl font-bold mb-4">Recent Quiz Results</h2>
+            {recentQuizzes.length > 0 ? (
+              <ul>
+                {recentQuizzes.map((quiz, index) => (
+                  <li key={index} className="text-white mb-2">
+                    Score: {quiz.score} - Date: {new Date(quiz.createdAt).toLocaleDateString()}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-white">No recent quizzes taken.</p>
+            )}
+          </div>
+        )}
+
+        <div className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-8 mb-8">
+          <h2 className="text-white text-2xl font-bold mb-4">Leaderboard</h2>
+          <ul className="space-y-4">
+            {leaderboard.map((entry, index) => (
+              <li key={index} className="bg-white bg-opacity-20 rounded-xl p-4 flex justify-between items-center">
+                <span className="text-white font-bold">{index + 1}. {entry.displayName}</span>
+                <span className="text-white">{entry.totalScore} points</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {user && canUpdateStreak && (
+          <Button onClick={handleUpdateStreak} className="mb-4">
+            Update Streak: Day {streakDay + 1}
+          </Button>
+        )}
       </main>
     </div>
   );

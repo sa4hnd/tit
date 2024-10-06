@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import * as React from 'react';
 import { Toaster } from 'sonner';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 import '@/styles/globals.css';
 import '@/styles/colors.css';
@@ -50,12 +51,11 @@ export const metadata: Metadata = {
   // ],
 };
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang='en'>
+    <html lang="en">
       <body>
-        {children}
-        <Toaster />
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

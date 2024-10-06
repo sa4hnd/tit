@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Home, RotateCcw, Share, Check, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { Home, RotateCcw, Share, Check, X } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -16,17 +16,13 @@ interface Question {
 export default function ResultsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [showQuestions, setShowQuestions] = useState<
-    'correct' | 'incorrect' | null
-  >(null);
+  const [showQuestions, setShowQuestions] = useState<'correct' | 'incorrect' | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<
-    number | null
-  >(null);
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null);
 
   const score = parseInt(searchParams.get('score') || '0');
   const total = parseInt(searchParams.get('total') || '1');
-  const percentage = parseInt(searchParams.get('percentage') || '0');
+  const percentage = Math.round((score / total) * 100);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -35,20 +31,29 @@ export default function ResultsPage() {
       const courseId = searchParams.get('courseId');
       const userAnswers = JSON.parse(searchParams.get('userAnswers') || '[]');
 
-      const response = await fetch(
-        `/api/questions?subjectId=${subjectId}&yearId=${yearId}&courseId=${courseId}`
-      );
-      const data = await response.json();
+      try {
+        const response = await fetch(
+          `/api/questions?subjectId=${subjectId}&yearId=${yearId}&courseId=${courseId}`
+        );
+        const data = await response.json();
 
-      const questionsWithUserAnswers = data.map(
-        (q: Question, index: number) => ({
+        if (!Array.isArray(data)) {
+          console.error('Expected an array of questions, but received:', data);
+          toast.error('Failed to load questions. Please try again.');
+          return;
+        }
+
+        const questionsWithUserAnswers = data.map((q: Question, index: number) => ({
           ...q,
-          options: JSON.parse(q.options),
+          options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
           userAnswer: userAnswers[index] || '',
-        })
-      );
+        }));
 
-      setQuestions(questionsWithUserAnswers);
+        setQuestions(questionsWithUserAnswers);
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+        toast.error('Failed to load questions. Please try again.');
+      }
     };
 
     fetchQuestions();
@@ -61,10 +66,10 @@ export default function ResultsPage() {
 
   const filteredQuestions = showQuestions
     ? questions.filter((q) =>
-        showQuestions === 'correct'
-          ? q.answer === q.userAnswer
-          : q.answer !== q.userAnswer
-      )
+      showQuestions === 'correct'
+        ? q.answer === q.userAnswer
+        : q.answer !== q.userAnswer
+    )
     : [];
 
   const handleShare = async () => {
@@ -111,18 +116,16 @@ export default function ResultsPage() {
           <div className='grid grid-cols-2 gap-4 mb-8'>
             <button
               onClick={() => handleShowQuestions('correct')}
-              className={`bg-green-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${
-                showQuestions === 'correct' ? 'ring-2 ring-green-400' : ''
-              }`}
+              className={`bg-green-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${showQuestions === 'correct' ? 'ring-2 ring-green-400' : ''
+                }`}
             >
               <h3 className='text-white text-lg font-bold mb-2'>Correct</h3>
               <p className='text-white text-3xl font-bold'>{score}</p>
             </button>
             <button
               onClick={() => handleShowQuestions('incorrect')}
-              className={`bg-red-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${
-                showQuestions === 'incorrect' ? 'ring-2 ring-red-400' : ''
-              }`}
+              className={`bg-red-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${showQuestions === 'incorrect' ? 'ring-2 ring-red-400' : ''
+                }`}
             >
               <h3 className='text-white text-lg font-bold mb-2'>Incorrect</h3>
               <p className='text-white text-3xl font-bold'>{total - score}</p>
@@ -132,19 +135,17 @@ export default function ResultsPage() {
           {showQuestions && (
             <div className='mb-8'>
               <h3 className='text-white text-xl font-bold mb-4'>
-                {showQuestions === 'correct' ? 'Correct' : 'Incorrect'}{' '}
-                Questions
+                {showQuestions === 'correct' ? 'Correct' : 'Incorrect'} Questions
               </h3>
               <div className='grid grid-cols-5 gap-2 mb-4'>
                 {filteredQuestions.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedQuestionIndex(index)}
-                    className={`w-8 h-8 rounded-full font-bold ${
-                      selectedQuestionIndex === index
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white bg-opacity-20 text-white'
-                    }`}
+                    className={`w-8 h-8 rounded-full font-bold ${selectedQuestionIndex === index
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white bg-opacity-20 text-white'
+                      }`}
                   >
                     {index + 1}
                   </button>
@@ -153,38 +154,28 @@ export default function ResultsPage() {
               {selectedQuestionIndex !== null && (
                 <div className='bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 mb-4'>
                   <p className='text-white font-bold mb-2'>
-                    {selectedQuestionIndex + 1}.{' '}
-                    {filteredQuestions[selectedQuestionIndex].text}
+                    {selectedQuestionIndex + 1}. {filteredQuestions[selectedQuestionIndex].text}
                   </p>
-                  {filteredQuestions[selectedQuestionIndex].options.map(
-                    (option, optionIndex) => (
-                      <div
-                        key={optionIndex}
-                        className={`p-2 rounded-xl mb-2 ${
-                          option ===
-                          filteredQuestions[selectedQuestionIndex].answer
-                            ? 'bg-green-500 bg-opacity-30'
-                            : option ===
-                              filteredQuestions[selectedQuestionIndex]
-                                .userAnswer
-                            ? 'bg-red-500 bg-opacity-30'
-                            : 'bg-white bg-opacity-10'
+                  {filteredQuestions[selectedQuestionIndex].options.map((option, optionIndex) => (
+                    <div
+                      key={optionIndex}
+                      className={`p-2 rounded-xl mb-2 ${option === filteredQuestions[selectedQuestionIndex].answer
+                        ? 'bg-green-500 bg-opacity-30'
+                        : option === filteredQuestions[selectedQuestionIndex].userAnswer
+                          ? 'bg-red-500 bg-opacity-30'
+                          : 'bg-white bg-opacity-10'
                         }`}
-                      >
-                        <span className='text-white'>{option}</span>
-                        {option ===
-                          filteredQuestions[selectedQuestionIndex].answer && (
-                          <Check className='inline-block ml-2 text-green-500' />
+                    >
+                      <span className='text-white'>{option}</span>
+                      {option === filteredQuestions[selectedQuestionIndex].answer && (
+                        <Check className='inline-block ml-2 text-green-500' />
+                      )}
+                      {option === filteredQuestions[selectedQuestionIndex].userAnswer &&
+                        option !== filteredQuestions[selectedQuestionIndex].answer && (
+                          <X className='inline-block ml-2 text-red-500' />
                         )}
-                        {option ===
-                          filteredQuestions[selectedQuestionIndex].userAnswer &&
-                          option !==
-                            filteredQuestions[selectedQuestionIndex].answer && (
-                            <X className='inline-block ml-2 text-red-500' />
-                          )}
-                      </div>
-                    )
-                  )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
