@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Check, Home, RotateCcw, Share, X } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Confetti from 'react-confetti';
 import { toast } from 'sonner';
-import { Home, RotateCcw, Share, Check, X } from 'lucide-react';
 
 interface Question {
   id: number;
@@ -16,13 +17,18 @@ interface Question {
 export default function ResultsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [showQuestions, setShowQuestions] = useState<'correct' | 'incorrect' | null>(null);
+  const [showQuestions, setShowQuestions] = useState<
+    'correct' | 'incorrect' | null
+  >(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<number | null>(null);
+  const [selectedQuestionIndex, setSelectedQuestionIndex] = useState<
+    number | null
+  >(null);
+  const [showConfetti, setShowConfetti] = useState(true);
 
   const score = parseInt(searchParams.get('score') || '0');
   const total = parseInt(searchParams.get('total') || '1');
-  const percentage = Math.round((score / total) * 100);
+  const percentage = parseInt(searchParams.get('percentage') || '0');
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -43,11 +49,15 @@ export default function ResultsPage() {
           return;
         }
 
-        const questionsWithUserAnswers = data.map((q: Question, index: number) => ({
-          ...q,
-          options: Array.isArray(q.options) ? q.options : JSON.parse(q.options),
-          userAnswer: userAnswers[index] || '',
-        }));
+        const questionsWithUserAnswers = data.map(
+          (q: Question, index: number) => ({
+            ...q,
+            options: Array.isArray(q.options)
+              ? q.options
+              : JSON.parse(q.options),
+            userAnswer: userAnswers[index] || '',
+          })
+        );
 
         setQuestions(questionsWithUserAnswers);
       } catch (error) {
@@ -57,7 +67,17 @@ export default function ResultsPage() {
     };
 
     fetchQuestions();
+
+    // Clear localStorage when results are shown
+    localStorage.removeItem('quizAnswers');
+
+    // Stop confetti after 5 seconds
+    const timer = setTimeout(() => setShowConfetti(false), 5000);
+    return () => clearTimeout(timer);
   }, [searchParams]);
+
+  const correctQuestions = questions.filter((q) => q.answer === q.userAnswer);
+  const incorrectQuestions = questions.filter((q) => q.answer !== q.userAnswer);
 
   const handleShowQuestions = (type: 'correct' | 'incorrect') => {
     setShowQuestions(type);
@@ -66,10 +86,10 @@ export default function ResultsPage() {
 
   const filteredQuestions = showQuestions
     ? questions.filter((q) =>
-      showQuestions === 'correct'
-        ? q.answer === q.userAnswer
-        : q.answer !== q.userAnswer
-    )
+        showQuestions === 'correct'
+          ? q.answer === q.userAnswer
+          : q.answer !== q.userAnswer
+      )
     : [];
 
   const handleShare = async () => {
@@ -95,57 +115,62 @@ export default function ResultsPage() {
   };
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 p-6 flex flex-col'>
-      <header className='flex justify-center items-center mb-8'>
-        <h1 className='text-white text-2xl font-bold'>Quiz Results</h1>
-      </header>
-
+    <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 p-6'>
+      {showConfetti && <Confetti />}
       <main className='flex-grow flex flex-col justify-center'>
         <div className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-8 max-w-md mx-auto w-full'>
+          <h2 className='text-white text-3xl font-bold mb-4'>Quiz Results</h2>
           <div className='text-center mb-8'>
-            <h2 className='text-white text-4xl font-bold mb-2'>Great job!</h2>
-            <p className='text-white text-xl'>You scored</p>
-            <div className='text-6xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 text-transparent bg-clip-text my-4'>
+            <div className='text-6xl font-bold text-white mb-2'>
               {percentage}%
             </div>
             <p className='text-white text-xl'>
-              {score} out of {total} correct
+              You scored <span className='font-bold'>{score}</span> out of{' '}
+              <span className='font-bold'>{total}</span>
             </p>
           </div>
 
           <div className='grid grid-cols-2 gap-4 mb-8'>
             <button
               onClick={() => handleShowQuestions('correct')}
-              className={`bg-green-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${showQuestions === 'correct' ? 'ring-2 ring-green-400' : ''
-                }`}
+              className={`bg-green-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${
+                showQuestions === 'correct' ? 'ring-2 ring-green-400' : ''
+              }`}
             >
               <h3 className='text-white text-lg font-bold mb-2'>Correct</h3>
-              <p className='text-white text-3xl font-bold'>{score}</p>
+              <p className='text-white text-3xl font-bold'>
+                {correctQuestions.length}
+              </p>
             </button>
             <button
               onClick={() => handleShowQuestions('incorrect')}
-              className={`bg-red-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${showQuestions === 'incorrect' ? 'ring-2 ring-red-400' : ''
-                }`}
+              className={`bg-red-500 bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 text-center ${
+                showQuestions === 'incorrect' ? 'ring-2 ring-red-400' : ''
+              }`}
             >
               <h3 className='text-white text-lg font-bold mb-2'>Incorrect</h3>
-              <p className='text-white text-3xl font-bold'>{total - score}</p>
+              <p className='text-white text-3xl font-bold'>
+                {incorrectQuestions.length}
+              </p>
             </button>
           </div>
 
           {showQuestions && (
             <div className='mb-8'>
               <h3 className='text-white text-xl font-bold mb-4'>
-                {showQuestions === 'correct' ? 'Correct' : 'Incorrect'} Questions
+                {showQuestions === 'correct' ? 'Correct' : 'Incorrect'}{' '}
+                Questions
               </h3>
               <div className='grid grid-cols-5 gap-2 mb-4'>
                 {filteredQuestions.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedQuestionIndex(index)}
-                    className={`w-8 h-8 rounded-full font-bold ${selectedQuestionIndex === index
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-white bg-opacity-20 text-white'
-                      }`}
+                    className={`w-8 h-8 rounded-full font-bold ${
+                      selectedQuestionIndex === index
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white bg-opacity-20 text-white'
+                    }`}
                   >
                     {index + 1}
                   </button>
@@ -154,28 +179,38 @@ export default function ResultsPage() {
               {selectedQuestionIndex !== null && (
                 <div className='bg-white bg-opacity-20 backdrop-filter backdrop-blur-sm rounded-2xl p-4 mb-4'>
                   <p className='text-white font-bold mb-2'>
-                    {selectedQuestionIndex + 1}. {filteredQuestions[selectedQuestionIndex].text}
+                    {selectedQuestionIndex + 1}.{' '}
+                    {filteredQuestions[selectedQuestionIndex].text}
                   </p>
-                  {filteredQuestions[selectedQuestionIndex].options.map((option, optionIndex) => (
-                    <div
-                      key={optionIndex}
-                      className={`p-2 rounded-xl mb-2 ${option === filteredQuestions[selectedQuestionIndex].answer
-                        ? 'bg-green-500 bg-opacity-30'
-                        : option === filteredQuestions[selectedQuestionIndex].userAnswer
-                          ? 'bg-red-500 bg-opacity-30'
-                          : 'bg-white bg-opacity-10'
+                  {filteredQuestions[selectedQuestionIndex].options.map(
+                    (option, optionIndex) => (
+                      <div
+                        key={optionIndex}
+                        className={`p-2 rounded-xl mb-2 ${
+                          option ===
+                          filteredQuestions[selectedQuestionIndex].answer
+                            ? 'bg-green-500 bg-opacity-30'
+                            : option ===
+                              filteredQuestions[selectedQuestionIndex]
+                                .userAnswer
+                            ? 'bg-red-500 bg-opacity-30'
+                            : 'bg-white bg-opacity-10'
                         }`}
-                    >
-                      <span className='text-white'>{option}</span>
-                      {option === filteredQuestions[selectedQuestionIndex].answer && (
-                        <Check className='inline-block ml-2 text-green-500' />
-                      )}
-                      {option === filteredQuestions[selectedQuestionIndex].userAnswer &&
-                        option !== filteredQuestions[selectedQuestionIndex].answer && (
-                          <X className='inline-block ml-2 text-red-500' />
+                      >
+                        <span className='text-white'>{option}</span>
+                        {option ===
+                          filteredQuestions[selectedQuestionIndex].answer && (
+                          <Check className='inline-block ml-2 text-green-500' />
                         )}
-                    </div>
-                  ))}
+                        {option ===
+                          filteredQuestions[selectedQuestionIndex].userAnswer &&
+                          option !==
+                            filteredQuestions[selectedQuestionIndex].answer && (
+                            <X className='inline-block ml-2 text-red-500' />
+                          )}
+                      </div>
+                    )
+                  )}
                 </div>
               )}
             </div>

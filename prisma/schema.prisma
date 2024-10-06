@@ -11,24 +11,27 @@ model Subject {
   id        Int        @id @default(autoincrement())
   name      String     @unique
   questions Question[]
+  quizResults QuizResult[]
 }
 
 model Year {
   id        Int        @id @default(autoincrement())
   name      String     @unique
   questions Question[]
+  quizResults QuizResult[]
 }
 
 model Course {
   id        Int        @id @default(autoincrement())
   name      String     @unique
   questions Question[]
+  quizResults QuizResult[]
 }
 
 model Question {
   id        Int     @id @default(autoincrement())
   text      String
-  options   String
+  options   String  // Stored as JSON string
   answer    String
   subject   Subject @relation(fields: [subjectId], references: [id])
   subjectId Int
@@ -51,11 +54,29 @@ model User {
   streakDays      Int      @default(0)
   quizzesTaken    Int      @default(0)
   totalScore      Int      @default(0)
+  totalQuestions  Int      @default(0)
   averageScore    Float    @default(0)
   lastStreakUpdate DateTime @default(now())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  quizzes         Quiz[]
+  quizResults     QuizResult[]
+  quizzes         Quiz[]  // Add this line to create the relation with Quiz model
+}
+
+model QuizResult {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  subjectId   Int
+  year        Year     @relation(fields: [yearId], references: [id])
+  yearId      Int
+  course      Course   @relation(fields: [courseId], references: [id])
+  courseId    Int
+  score       Int
+  total       Int
+  percentage  Float
+  createdAt   DateTime @default(now())
 }
 
 model Quiz {

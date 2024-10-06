@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { withAdminAuth } from '@/components/withAdminAuth';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+import { Button } from '@/components/ui/button';
+import { withAdminAuth } from '@/components/withAdminAuth';
 
 interface User {
   id: string;
@@ -67,7 +68,9 @@ function ManageUsersPage() {
       });
       if (response.ok) {
         fetchUsers();
-        toast.success(`User access ${hasAccess ? 'removed' : 'granted'} successfully`);
+        toast.success(
+          `User access ${hasAccess ? 'removed' : 'granted'} successfully`
+        );
       } else {
         throw new Error('Failed to update user access status');
       }
@@ -83,7 +86,10 @@ function ManageUsersPage() {
       <p className='text-white text-xl mb-4'>Total Users: {totalUsers}</p>
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
         {users.map((user) => (
-          <div key={user.id} className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-6'>
+          <div
+            key={user.id}
+            className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-6'
+          >
             <div className='flex items-center mb-4'>
               <Image
                 src={user.photoURL || '/default-avatar.png'}
@@ -93,13 +99,19 @@ function ManageUsersPage() {
                 className='rounded-full mr-4'
               />
               <div>
-                <h2 className='text-white text-xl font-bold'>{user.displayName || 'Anonymous'}</h2>
+                <h2 className='text-white text-xl font-bold'>
+                  {user.displayName || 'Anonymous'}
+                </h2>
                 <p className='text-gray-300'>{user.email}</p>
               </div>
             </div>
-            <p className='text-gray-300 mb-2'>Created: {new Date(user.createdAt).toLocaleDateString()}</p>
+            <p className='text-gray-300 mb-2'>
+              Created: {new Date(user.createdAt).toLocaleDateString()}
+            </p>
             <p className='text-gray-300 mb-2'>Streak: {user.streakDays} days</p>
-            <p className='text-gray-300 mb-2'>Quizzes Taken: {user.quizzesTaken}</p>
+            <p className='text-gray-300 mb-2'>
+              Quizzes Taken: {user.quizzesTaken}
+            </p>
             <p className='text-gray-300 mb-2'>Total Score: {user.totalScore}</p>
             <div className='flex justify-between items-center mt-4'>
               <Button

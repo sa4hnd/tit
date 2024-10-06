@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
@@ -17,7 +18,10 @@ export async function GET(request: Request) {
 
     const lastStreakUpdate = new Date(user.lastStreakUpdate);
     const now = new Date();
-    const canUpdateStreak = now.getTime() - lastStreakUpdate.getTime() >= 24 * 60 * 60 * 1000;
+    const timeDiff = now.getTime() - lastStreakUpdate.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+    const canUpdateStreak = hoursDiff >= 24;
 
     return NextResponse.json({
       streakDays: user.streakDays,
@@ -25,7 +29,10 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error('Error checking user streak:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -41,9 +48,14 @@ export async function POST(request: Request) {
     const lastStreakUpdate = new Date(user.lastStreakUpdate);
     const now = new Date();
     const timeDiff = now.getTime() - lastStreakUpdate.getTime();
+    const hoursDiff = timeDiff / (1000 * 60 * 60);
 
-    if (timeDiff < 24 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: 'Streak can only be updated once per day' }, { status: 400 });
+    if (hoursDiff < 24) {
+      // If less than 24 hours have passed, don't update the streak
+      return NextResponse.json({
+        streakDays: user.streakDays,
+        message: 'Streak already updated today',
+      });
     }
 
     const updatedUser = await prisma.user.update({
@@ -56,9 +68,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       streakDays: updatedUser.streakDays,
+      message: 'Streak updated successfully',
     });
   } catch (error) {
     console.error('Error updating user streak:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

@@ -1,7 +1,8 @@
 'use client'; // Error components must be Client Components
 
-import * as React from 'react';
 import { AlertCircle } from 'lucide-react';
+import * as React from 'react';
+
 import { Button } from '@/components/ui/button';
 
 export default function Error({

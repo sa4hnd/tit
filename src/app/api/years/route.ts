@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
@@ -7,7 +8,10 @@ export async function GET() {
     return NextResponse.json(years);
   } catch (error) {
     console.error('Error fetching years:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -20,6 +24,9 @@ export async function POST(request: Request) {
     return NextResponse.json(year);
   } catch (error) {
     console.error('Error creating year:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

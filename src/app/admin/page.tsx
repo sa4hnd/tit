@@ -1,13 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { withAdminAuth } from '@/components/withAdminAuth';
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getAnalytics, logEvent } from 'firebase/analytics';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
+
+import { app } from '@/lib/firebase';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { app } from '@/lib/firebase';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { withAdminAuth } from '@/components/withAdminAuth';
 
 interface Subject {
   id: number;
@@ -108,7 +117,10 @@ function AdminPage() {
     } catch (error) {
       console.error('Error adding new subject:', error);
       toast.error('Failed to add new subject');
-      logEvent(analytics, 'admin_add_subject_error', { subject: newSubject, error: (error as Error).message });
+      logEvent(analytics, 'admin_add_subject_error', {
+        subject: newSubject,
+        error: (error as Error).message,
+      });
     }
   };
 
@@ -130,7 +142,10 @@ function AdminPage() {
     } catch (error) {
       console.error('Error adding new year:', error);
       toast.error('Failed to add new year');
-      logEvent(analytics, 'admin_add_year_error', { year: newYear, error: (error as Error).message });
+      logEvent(analytics, 'admin_add_year_error', {
+        year: newYear,
+        error: (error as Error).message,
+      });
     }
   };
 
@@ -152,7 +167,10 @@ function AdminPage() {
     } catch (error) {
       console.error('Error adding new course:', error);
       toast.error('Failed to add new course');
-      logEvent(analytics, 'admin_add_course_error', { course: newCourse, error: (error as Error).message });
+      logEvent(analytics, 'admin_add_course_error', {
+        course: newCourse,
+        error: (error as Error).message,
+      });
     }
   };
 
@@ -184,7 +202,9 @@ function AdminPage() {
     } catch (error) {
       console.error('Error adding question:', error);
       toast.error('Failed to add question');
-      logEvent(analytics, 'admin_add_question_error', { error: (error as Error).message });
+      logEvent(analytics, 'admin_add_question_error', {
+        error: (error as Error).message,
+      });
     }
   };
 
@@ -194,7 +214,9 @@ function AdminPage() {
       <div className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-6'>
         {/* Add new subject */}
         <div className='mb-6'>
-          <h2 className='text-white text-2xl font-bold mb-4'>Add New Subject</h2>
+          <h2 className='text-white text-2xl font-bold mb-4'>
+            Add New Subject
+          </h2>
           <div className='flex items-center'>
             <Input
               type='text'
@@ -239,7 +261,9 @@ function AdminPage() {
 
         {/* Add new question */}
         <div className='mb-6'>
-          <h2 className='text-white text-2xl font-bold mb-4'>Add New Question</h2>
+          <h2 className='text-white text-2xl font-bold mb-4'>
+            Add New Question
+          </h2>
           <form onSubmit={handleSubmit} className='space-y-4'>
             <Select value={selectedSubject} onValueChange={setSelectedSubject}>
               <SelectTrigger className='w-full'>
@@ -328,7 +352,9 @@ function AdminPage() {
 
         {/* Display questions */}
         <div>
-          <h2 className='text-white text-2xl font-bold mb-4'>Manage Questions</h2>
+          <h2 className='text-white text-2xl font-bold mb-4'>
+            Manage Questions
+          </h2>
           {questions.length > 0 ? (
             <ul>
               {questions.map((question) => (
@@ -338,7 +364,9 @@ function AdminPage() {
               ))}
             </ul>
           ) : (
-            <p className='text-white'>No questions found for the selected criteria.</p>
+            <p className='text-white'>
+              No questions found for the selected criteria.
+            </p>
           )}
         </div>
       </div>

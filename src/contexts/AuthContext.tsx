@@ -1,63 +1,78 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
-  signInWithPopup,
-  GoogleAuthProvider,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  updateProfile as firebaseUpdateProfile,
   User as FirebaseUser,
-  updateProfile as firebaseUpdateProfile
 } from 'firebase/auth';
-import { prisma } from '@/lib/prisma';
+import { createContext, useContext, useEffect, useState } from 'react';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-};
+import { auth, googleProvider } from '@/lib/firebase';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Remove these lines as they're already handled in @/lib/firebase
+// const firebaseConfig = { ... };
+// const app = initializeApp(firebaseConfig);
+// const auth = getAuth(app);
 
 interface AuthContextType {
   user: (FirebaseUser & { id: string; isAdmin: boolean }) | null;
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (data: { displayName?: string; photoURL?: string }) => Promise<void>;
+  updateProfile: (data: {
+    displayName?: string;
+    photoURL?: string;
+  }) => Promise<void>;
   hasAccess: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<(FirebaseUser & { id: string; isAdmin: boolean; hasAccess: boolean }) | null>(null);
-  const [hasAccess, setHasAccess] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser ? 'User logged in' : 'User logged out');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          console.log('Fetching user data from database');
-          const response = await fetch(`/api/auth/user?firebaseUid=${firebaseUser.uid}`);
-          const dbUser = await response.json();
-          console.log('User data fetched:', dbUser);
-          setUser({ ...firebaseUser, id: dbUser.id, isAdmin: dbUser.isAdmin, hasAccess: dbUser.hasAccess });
-          setHasAccess(dbUser.hasAccess || process.env.NEXT_PUBLIC_ALLOW_ALL_SIGNUPS === 'true');
+          const response = await fetch('/api/auth/user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              firebaseUid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to sync user data with Prisma');
+          }
+
+          const userData = await response.json();
+          setUser({
+            ...firebaseUser,
+            id: userData.id,
+            isAdmin: userData.isAdmin,
+            hasAccess: userData.hasAccess, // Ensure this is being set correctly
+          });
+          setHasAccess(userData.hasAccess);
         } catch (error) {
-          console.error('Error fetching user data:', error);
+          console.error('Error syncing user data:', error);
         }
       } else {
         setUser(null);
         setHasAccess(false);
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -65,41 +80,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     try {
-      console.log('Initiating Google Sign-In');
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      console.log('Google Sign-In successful');
-      return result.user;
+      await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      console.error('Error in signIn function:', error);
+      console.error('Error signing in:', error);
       throw error;
     }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      console.log('Signing in with email');
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Email sign-in successful');
-      return result.user;
+      await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
-      console.error('Error in signInWithEmail function:', error);
+      console.error('Error signing in with email:', error);
       throw error;
     }
   };
 
-  const signOut = async () => {
-    try {
-      console.log('Signing out');
-      await auth.signOut();
-      console.log('Sign-out successful');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      throw error;
-    }
+  const signOut = () => {
+    firebaseSignOut(auth).then(() => {
+      setUser(null);
+      setHasAccess(false);
+    });
   };
 
-  const updateProfile = async (data: { displayName?: string; photoURL?: string }) => {
+  const updateProfile = async (data: {
+    displayName?: string;
+    photoURL?: string;
+  }) => {
     if (user) {
       await firebaseUpdateProfile(user, data);
       // Update user in MySQL via API
@@ -115,8 +122,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, signIn, signInWithEmail, signOut, updateProfile, hasAccess }}>
-      {children}
+    <AuthContext.Provider
+      value={{
+        user,
+        signIn,
+        signInWithEmail,
+        signOut,
+        updateProfile,
+        hasAccess,
+      }}
+    >
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

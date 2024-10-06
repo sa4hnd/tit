@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
@@ -11,6 +12,9 @@ export async function POST(request: Request) {
     return NextResponse.json(user);
   } catch (error) {
     console.error('Error updating user ban status:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

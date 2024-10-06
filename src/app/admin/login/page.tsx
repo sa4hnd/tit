@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
+import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { FcGoogle } from 'react-icons/fc';
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('');
@@ -38,31 +40,39 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 flex items-center justify-center p-6">
-      <div className="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-8 w-full max-w-md">
-        <h1 className="text-white text-3xl font-bold mb-6 text-center">Admin Login</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 flex items-center justify-center p-6'>
+      <div className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-8 w-full max-w-md'>
+        <h1 className='text-white text-3xl font-bold mb-6 text-center'>
+          Admin Login
+        </h1>
+        <form onSubmit={handleSubmit} className='space-y-4'>
           <Input
-            type="email"
-            placeholder="Email"
+            type='email'
+            placeholder='Email'
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className='bg-white bg-opacity-20 text-white placeholder-gray-300'
           />
           <Input
-            type="password"
-            placeholder="Password"
+            type='password'
+            placeholder='Password'
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className='bg-white bg-opacity-20 text-white placeholder-gray-300'
           />
-          <Button type="submit" className='w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 rounded-2xl transition-transform transform hover:scale-105'>
+          <Button
+            type='submit'
+            className='w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 rounded-2xl transition-transform transform hover:scale-105'
+          >
             Login
           </Button>
         </form>
-        <div className="mt-4">
-          <Button onClick={handleGoogleSignIn} className='w-full bg-white text-gray-800 font-bold py-3 rounded-2xl transition-transform transform hover:scale-105 flex items-center justify-center'>
-            <FcGoogle className="mr-2" size={20} />
+        <div className='mt-4'>
+          <Button
+            onClick={handleGoogleSignIn}
+            className='w-full bg-white text-gray-800 font-bold py-3 rounded-2xl transition-transform transform hover:scale-105 flex items-center justify-center'
+          >
+            <FcGoogle className='mr-2' size={20} />
             Sign in with Google
           </Button>
         </div>

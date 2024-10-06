@@ -1,9 +1,10 @@
 'use client';
 
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+
+import { useAuth } from '@/contexts/AuthContext';
 
 export function withAdminAuth(WrappedComponent: React.ComponentType) {
   return function WithAdminAuth(props: any) {

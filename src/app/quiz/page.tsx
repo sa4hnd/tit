@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, BarChart2, Clock } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BarChart2, Clock } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+
+import SubscriptionPrompt from '@/components/SubscriptionPrompt';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getAnalytics, logEvent } from 'firebase/analytics';
-import { app } from '@/lib/firebase';
 
-const analytics = getAnalytics(app);
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Question {
   id: number;
@@ -28,45 +26,56 @@ interface Question {
 }
 
 export default function QuizPage() {
-  const { user, hasAccess } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [userAnswers, setUserAnswers] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
-  const searchParams = useSearchParams();
   const [showWarning, setShowWarning] = useState(false);
-  const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [showSubscriptionPrompt, setShowSubscriptionPrompt] = useState(false);
 
   useEffect(() => {
     if (!user) {
       router.push('/login');
-    } else if (user.isBanned) {
-      toast.error('Your account has been banned. Please contact support.');
-      logEvent(analytics, 'quiz_access_banned', { userId: user.id });
-      router.push('/');
-    } else if (!hasAccess) {
-      setShowAccessDenied(true);
-      logEvent(analytics, 'quiz_access_denied', { userId: user.id });
+    } else if (!user.hasAccess) {
+      setShowSubscriptionPrompt(true);
+    } else {
+      fetchQuestions();
     }
-  }, [user, hasAccess, router]);
+  }, [user, router]);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      const subjectId = searchParams.get('subjectId');
-      const yearId = searchParams.get('yearId');
-      const courseId = searchParams.get('courseId');
+    // Load answers from localStorage when component mounts
+    const savedAnswers = localStorage.getItem('quizAnswers');
+    if (savedAnswers) {
+      setUserAnswers(JSON.parse(savedAnswers));
+    }
+  }, []);
 
+  const fetchQuestions = async () => {
+    try {
       const response = await fetch(
-        `/api/questions?subjectId=${subjectId}&yearId=${yearId}&courseId=${courseId}`
+        `/api/questions?subjectId=${searchParams.get(
+          'subjectId'
+        )}&yearId=${searchParams.get('yearId')}&courseId=${searchParams.get(
+          'courseId'
+        )}`
       );
+      if (!response.ok) {
+        throw new Error('Failed to fetch questions');
+      }
       const data = await response.json();
       setQuestions(data);
-    };
-
-    fetchQuestions();
-  }, [searchParams]);
+      setUserAnswers(new Array(data.length).fill(''));
+      setTimeLeft(600); // Reset timer when questions are loaded
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      toast.error('Failed to load questions. Please try again.');
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -83,10 +92,13 @@ export default function QuizPage() {
   };
 
   const handleAnswer = (answer: string) => {
-    const newUserAnswers = [...userAnswers];
-    newUserAnswers[currentQuestionIndex] = answer;
-    setUserAnswers(newUserAnswers);
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQuestionIndex] = answer;
+    setUserAnswers(newAnswers);
     setSelectedAnswer(answer);
+
+    // Save answers to localStorage
+    localStorage.setItem('quizAnswers', JSON.stringify(newAnswers));
   };
 
   const handleNext = () => {
@@ -104,9 +116,7 @@ export default function QuizPage() {
   };
 
   const handleFinish = () => {
-    const unansweredQuestions = questions.filter(
-      (_, index) => !userAnswers[index]
-    );
+    const unansweredQuestions = userAnswers.filter((answer) => answer === '');
     if (unansweredQuestions.length > 0) {
       setShowWarning(true);
     } else {
@@ -115,24 +125,58 @@ export default function QuizPage() {
   };
 
   const submitQuiz = async () => {
-    const score = questions.reduce((total, q, index) => {
-      return total + (userAnswers[index] === q.answer ? 1 : 0);
+    const score = userAnswers.reduce((acc, answer, index) => {
+      return acc + (answer === questions[index].answer ? 1 : 0);
     }, 0);
+    const percentage = Math.round((score / questions.length) * 100);
 
-    // Save quiz results
     try {
-      await fetch('/api/user-stats', {
+      const response = await fetch('/api/quiz-results', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, score }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          score,
+          total: questions.length,
+          percentage,
+          subjectId: searchParams.get('subjectId'),
+          yearId: searchParams.get('yearId'),
+          courseId: searchParams.get('courseId'),
+        }),
       });
-      toast.success('Quiz submitted successfully!');
-      router.push('/quiz-results');
+
+      if (!response.ok) {
+        throw new Error('Failed to submit quiz results');
+      }
+
+      const data = await response.json();
+      console.log('Quiz result submitted:', data);
+
+      router.push(
+        `/quiz-results?score=${score}&total=${
+          questions.length
+        }&percentage=${percentage}&subjectId=${searchParams.get(
+          'subjectId'
+        )}&yearId=${searchParams.get('yearId')}&courseId=${searchParams.get(
+          'courseId'
+        )}&userAnswers=${JSON.stringify(userAnswers)}`
+      );
     } catch (error) {
-      console.error('Error saving quiz results:', error);
-      toast.error('Failed to submit quiz. Please try again.');
+      console.error('Error submitting quiz results:', error);
+      toast.error('Failed to submit quiz results. Please try again.');
     }
   };
+
+  if (!user || !user.hasAccess) {
+    return (
+      <SubscriptionPrompt
+        isOpen={showSubscriptionPrompt}
+        onClose={() => router.push('/')}
+      />
+    );
+  }
 
   if (questions.length === 0) {
     return (
@@ -150,7 +194,7 @@ export default function QuizPage() {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const options = currentQuestion ? JSON.parse(currentQuestion.options) : [];
+  const options = JSON.parse(currentQuestion.options);
 
   return (
     <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 p-6 flex flex-col'>
@@ -167,7 +211,7 @@ export default function QuizPage() {
         <div className='bg-white bg-opacity-20 backdrop-filter backdrop-blur-lg rounded-3xl p-4 sm:p-8 max-w-4xl mx-auto w-full'>
           <div className='flex flex-col sm:flex-row justify-between items-center mb-6'>
             <h2 className='text-white text-xl sm:text-2xl font-bold mb-2 sm:mb-0'>
-              Question {currentQuestionIndex + 1} /{questions.length}
+              Question {currentQuestionIndex + 1} / {questions.length}
             </h2>
             <div className='flex items-center bg-[#8B4513] bg-opacity-70 rounded-full px-4 py-2'>
               <Clock className='text-white w-5 h-5 mr-2' />
@@ -185,10 +229,11 @@ export default function QuizPage() {
               <button
                 key={option}
                 onClick={() => handleAnswer(option)}
-                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${selectedAnswer === option
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-500'
-                  : 'bg-white bg-opacity-10 hover:bg-opacity-20'
-                  }`}
+                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${
+                  selectedAnswer === option
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-500'
+                    : 'bg-white bg-opacity-10 hover:bg-opacity-20'
+                }`}
               >
                 {option}
               </button>
@@ -217,12 +262,13 @@ export default function QuizPage() {
               <button
                 key={index}
                 onClick={() => setCurrentQuestionIndex(index)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${currentQuestionIndex === index
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
-                  : userAnswers[index]
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${
+                  currentQuestionIndex === index
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                    : userAnswers[index]
                     ? 'bg-gradient-to-r from-green-400 to-blue-500 text-white'
                     : 'bg-white bg-opacity-10 text-white hover:bg-opacity-30'
-                  }`}
+                }`}
               >
                 {index + 1}
               </button>
@@ -250,20 +296,6 @@ export default function QuizPage() {
                   Continue Quiz
                 </Button>
                 <Button onClick={submitQuiz}>Submit Anyway</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={showAccessDenied} onOpenChange={setShowAccessDenied}>
-            <DialogContent className='bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 text-white'>
-              <DialogHeader>
-                <DialogTitle>Access Denied</DialogTitle>
-                <DialogDescription>
-                  You need to subscribe to access quizzes. Please contact us for more information.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button onClick={() => router.push('/')}>Return to Home</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

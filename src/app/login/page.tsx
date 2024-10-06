@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState } from 'react';
+import { FcGoogle } from 'react-icons/fc';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FcGoogle } from 'react-icons/fc';
-import Link from 'next/link';
+
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -46,29 +48,34 @@ export default function LoginPage() {
   return (
     <div className='min-h-screen bg-gradient-to-br from-purple-700 via-indigo-800 to-blue-900 p-6 flex flex-col'>
       <header className='flex justify-between items-center mb-8'>
-        <Link href="/">
+        <Link href='/'>
           <h1 className='text-white text-4xl font-bold'>Fergeh</h1>
         </Link>
       </header>
       <main className='flex-grow flex items-center justify-center'>
         <div className='bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-3xl p-8 w-full max-w-md'>
-          <h2 className='text-white text-3xl font-bold mb-6 text-center'>Sign In</h2>
+          <h2 className='text-white text-3xl font-bold mb-6 text-center'>
+            Sign In
+          </h2>
           <form onSubmit={handleEmailSignIn} className='space-y-4 mb-6'>
             <Input
-              type="email"
-              placeholder="Email"
+              type='email'
+              placeholder='Email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className='bg-white bg-opacity-20 text-white placeholder-gray-300'
             />
             <Input
-              type="password"
-              placeholder="Password"
+              type='password'
+              placeholder='Password'
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className='bg-white bg-opacity-20 text-white placeholder-gray-300'
             />
-            <Button type="submit" className='w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 rounded-2xl transition-transform transform hover:scale-105'>
+            <Button
+              type='submit'
+              className='w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold py-3 rounded-2xl transition-transform transform hover:scale-105'
+            >
               Sign In with Email
             </Button>
           </form>

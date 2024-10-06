@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
@@ -12,11 +13,11 @@ export async function GET(request: Request) {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        quizzes: {
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-        },
+      select: {
+        quizzesTaken: true,
+        totalScore: true,
+        streakDays: true,
+        averageScore: true,
       },
     });
 
@@ -24,17 +25,42 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const averageScore = user.quizzesTaken > 0 ? Math.round((user.totalScore / user.quizzesTaken) * 100) / 100 : 0;
+    const recentQuizzes = await prisma.quizResult.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      include: {
+        subject: true,
+        year: true,
+        course: true,
+      },
+    });
+
+    const leaderboard = await prisma.user.findMany({
+      select: {
+        id: true,
+        displayName: true,
+        averageScore: true,
+      },
+      orderBy: {
+        averageScore: 'desc',
+      },
+      take: 10,
+    });
 
     return NextResponse.json({
       quizzesTaken: user.quizzesTaken,
-      averageScore,
+      averageScore: user.averageScore,
       streakDays: user.streakDays,
-      recentQuizzes: user.quizzes,
+      recentQuizzes,
+      leaderboard,
     });
   } catch (error) {
     console.error('Error fetching user stats:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
@@ -61,6 +87,9 @@ export async function POST(request: Request) {
     return NextResponse.json(user);
   } catch (error) {
     console.error('Error updating user stats:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }

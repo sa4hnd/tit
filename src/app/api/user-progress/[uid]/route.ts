@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -19,7 +20,9 @@ export async function GET(
     }
 
     const quizzesTaken = user.quizzes.length;
-    const averageScore = user.quizzes.reduce((sum, quiz) => sum + quiz.score, 0) / quizzesTaken || 0;
+    const averageScore =
+      user.quizzes.reduce((sum, quiz) => sum + quiz.score, 0) / quizzesTaken ||
+      0;
     const streakDays = calculateStreakDays(user.quizzes);
     const leaderboardRank = await calculateLeaderboardRank(user.id);
 
@@ -31,7 +34,10 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error fetching user progress:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
 
