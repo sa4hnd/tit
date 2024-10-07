@@ -22,7 +22,7 @@ interface Question {
   id: number;
   text: string;
   options: string;
-  answer: string;
+  answer: string; // This is the correct answer
 }
 
 export default function QuizPage() {
@@ -125,13 +125,21 @@ export default function QuizPage() {
   };
 
   const submitQuiz = async () => {
-    const score = userAnswers.reduce((acc, answer, index) => {
-      return acc + (answer === questions[index].answer ? 1 : 0);
-    }, 0);
-    const percentage = Math.round((score / questions.length) * 100);
+    if (!user) {
+      console.error('User is not logged in');
+      toast.error('You must be logged in to submit a quiz');
+      return;
+    }
+
+    const score = userAnswers.reduce(
+      (total, answer, index) =>
+        answer === questions[index].answer ? total + 1 : total,
+      0
+    );
+    const percentage = (score / questions.length) * 100;
 
     try {
-      const response = await fetch('/api/quiz-results', {
+      const response = await fetch('/api/submit-quiz', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,31 +149,19 @@ export default function QuizPage() {
           score,
           total: questions.length,
           percentage,
-          subjectId: searchParams.get('subjectId'),
-          yearId: searchParams.get('yearId'),
-          courseId: searchParams.get('courseId'),
+          answers: userAnswers,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit quiz results');
+        throw new Error('Failed to submit quiz');
       }
 
-      const data = await response.json();
-      console.log('Quiz result submitted:', data);
-
-      router.push(
-        `/quiz-results?score=${score}&total=${
-          questions.length
-        }&percentage=${percentage}&subjectId=${searchParams.get(
-          'subjectId'
-        )}&yearId=${searchParams.get('yearId')}&courseId=${searchParams.get(
-          'courseId'
-        )}&userAnswers=${JSON.stringify(userAnswers)}`
-      );
+      const result = await response.json();
+      router.push(`/quiz-results?quizId=${result.quizId}`);
     } catch (error) {
-      console.error('Error submitting quiz results:', error);
-      toast.error('Failed to submit quiz results. Please try again.');
+      console.error('Error submitting quiz:', error);
+      toast.error('Failed to submit quiz. Please try again.');
     }
   };
 
@@ -229,11 +225,10 @@ export default function QuizPage() {
               <button
                 key={option}
                 onClick={() => handleAnswer(option)}
-                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${
-                  selectedAnswer === option
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-500'
-                    : 'bg-white bg-opacity-10 hover:bg-opacity-20'
-                }`}
+                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${selectedAnswer === option
+                  ? 'bg-gradient-to-r from-pink-500 to-purple-500'
+                  : 'bg-white bg-opacity-10 hover:bg-opacity-20'
+                  }`}
               >
                 {option}
               </button>
@@ -262,13 +257,12 @@ export default function QuizPage() {
               <button
                 key={index}
                 onClick={() => setCurrentQuestionIndex(index)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${
-                  currentQuestionIndex === index
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
-                    : userAnswers[index]
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${currentQuestionIndex === index
+                  ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                  : userAnswers[index]
                     ? 'bg-gradient-to-r from-green-400 to-blue-500 text-white'
                     : 'bg-white bg-opacity-10 text-white hover:bg-opacity-30'
-                }`}
+                  }`}
               >
                 {index + 1}
               </button>

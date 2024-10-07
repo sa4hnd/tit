@@ -33,6 +33,18 @@ interface Course {
   name: string;
 }
 
+interface LeaderboardEntry {
+  id: string;
+  displayName: string;
+  totalScore: number;
+  // Add any other properties that your leaderboard entries have
+}
+
+interface RecentQuiz {
+  score: number;
+  createdAt: string;
+}
+
 export default function HomePage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [years, setYears] = useState<Year[]>([]);
@@ -42,13 +54,13 @@ export default function HomePage() {
   const [selectedCourse, setSelectedCourse] = useState<string>('');
   const router = useRouter();
   const { user, signOut, hasAccess } = useAuth();
-  const [recentQuizzes, setRecentQuizzes] = useState([]);
+  const [recentQuizzes, setRecentQuizzes] = useState<RecentQuiz[]>([]);
   const [userStats, setUserStats] = useState({
     quizzesTaken: 0,
     averageScore: 0,
     streakDays: 0,
   });
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [streakDay, setStreakDay] = useState(0);
   const [canUpdateStreak, setCanUpdateStreak] = useState(false);
   const [showWelcomePopup, setShowWelcomePopup] = useState(false);
@@ -113,6 +125,12 @@ export default function HomePage() {
     fetchLeaderboard();
   }, [user]);
 
+  useEffect(() => {
+    if (user) {
+      fetchRecentQuizzes();
+    }
+  }, [user]);
+
   const checkStreak = async () => {
     if (user) {
       try {
@@ -129,6 +147,11 @@ export default function HomePage() {
   };
 
   const fetchRecentQuizzes = async () => {
+    if (!user) {
+      console.error('User is not logged in');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/user-stats?userId=${user.id}`);
       const data = await response.json();
@@ -213,10 +236,10 @@ export default function HomePage() {
                 </h3>
                 <p className='text-white text-3xl font-bold'>{streakDay}</p>
               </div>
-              <div className='bg-yellow-500 bg-opacity-20 rounded-xl p-4'>
+              <div className='bg-green-600 bg-opacity-50 rounded-2xl p-4 text-center'>
                 <h3 className='text-white text-lg font-bold mb-2'>Your Rank</h3>
                 <p className='text-white text-3xl font-bold'>
-                  {leaderboard.findIndex((entry) => entry.id === user?.id) + 1}
+                  {user && leaderboard.findIndex((entry) => entry.id === user.id) + 1}
                 </p>
               </div>
             </div>
@@ -233,7 +256,7 @@ export default function HomePage() {
                   <span className='text-white font-bold'>
                     {index + 1}. {entry.displayName}
                   </span>
-                  <span className='text-white'>{entry.averageScore}%</span>
+                  <span className='text-white'>{entry.totalScore}%</span>
                 </li>
               ))}
             </ul>

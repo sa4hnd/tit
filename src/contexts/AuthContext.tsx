@@ -12,13 +12,15 @@ import { createContext, useContext, useEffect, useState } from 'react';
 
 import { auth, googleProvider } from '@/lib/firebase';
 
-// Remove these lines as they're already handled in @/lib/firebase
-// const firebaseConfig = { ... };
-// const app = initializeApp(firebaseConfig);
-// const auth = getAuth(app);
+// Define a custom user type that extends FirebaseUser
+type CustomUser = FirebaseUser & {
+  id: string;
+  isAdmin: boolean;
+  hasAccess: boolean;
+};
 
 interface AuthContextType {
-  user: (FirebaseUser & { id: string; isAdmin: boolean }) | null;
+  user: CustomUser | null;
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -32,7 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CustomUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -62,8 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...firebaseUser,
             id: userData.id,
             isAdmin: userData.isAdmin,
-            hasAccess: userData.hasAccess, // Ensure this is being set correctly
-          });
+            hasAccess: userData.hasAccess,
+          } as CustomUser);
           setHasAccess(userData.hasAccess);
         } catch (error) {
           console.error('Error syncing user data:', error);
@@ -96,28 +98,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signOut = () => {
-    firebaseSignOut(auth).then(() => {
+  const signOut = async (): Promise<void> => {
+    try {
+      await firebaseSignOut(auth);
       setUser(null);
       setHasAccess(false);
-    });
+    } catch (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   };
 
   const updateProfile = async (data: {
     displayName?: string;
     photoURL?: string;
   }) => {
-    if (user) {
-      await firebaseUpdateProfile(user, data);
-      // Update user in MySQL via API
-      await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firebaseUid: user.uid,
-          ...data,
-        }),
-      });
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      try {
+        await firebaseUpdateProfile(currentUser, data);
+        // Update user in MySQL via API
+        await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            firebaseUid: currentUser.uid,
+            ...data,
+          }),
+        });
+        // Update local user state
+        setUser((prevUser) => {
+          if (prevUser) {
+            return {
+              ...prevUser,
+              displayName: data.displayName || prevUser.displayName,
+              photoURL: data.photoURL || prevUser.photoURL,
+            };
+          }
+          return prevUser;
+        });
+      } catch (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
+    } else {
+      console.error('No user is currently signed in');
+      throw new Error('No user is currently signed in');
     }
   };
 
