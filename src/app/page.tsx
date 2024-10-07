@@ -407,7 +407,7 @@ export default function HomePage() {
             </div>
             <p className='text-white text-lg mb-4'>
               You're on day {streakDay + 1} of your streak!
-            </p>
+            </p>ommit
             <Button onClick={handleUpdateStreak} className='w-full'>
               Continue Streak
             </Button>
