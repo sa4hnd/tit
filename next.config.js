@@ -5,7 +5,10 @@ const nextConfig = {
   // Remove the experimental section as it's no longer needed
 
   images: {
-    domains: ['lh3.googleusercontent.com'],
+    domains: ['lh3.googleusercontent.com', 'firebasestorage.googleapis.com'],
+  },
+  experimental: {
+    appDir: true,
   },
 };
 

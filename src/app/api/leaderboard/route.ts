@@ -8,26 +8,15 @@ export async function GET() {
       select: {
         id: true,
         displayName: true,
-        quizzesTaken: true,
-        totalScore: true,
+        averageScore: true,
       },
       orderBy: {
-        totalScore: 'desc',
+        averageScore: 'desc',
       },
-      take: 10,
+      take: 10, // Limit to top 10 users
     });
 
-    const leaderboardWithAvgScore = leaderboard.map((user) => ({
-      ...user,
-      averageScore:
-        user.quizzesTaken > 0
-          ? Math.round((user.totalScore / user.quizzesTaken) * 100) / 100
-          : 0,
-    }));
-
-    leaderboardWithAvgScore.sort((a, b) => b.averageScore - a.averageScore);
-
-    return NextResponse.json(leaderboardWithAvgScore);
+    return NextResponse.json(leaderboard);
   } catch (error) {
     console.error('Error fetching leaderboard:', error);
     return NextResponse.json(

@@ -2,6 +2,7 @@
 
 import { CheckCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 
@@ -9,6 +10,22 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
   const { user, signOut } = useAuth();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOut();
+    // Force a re-render after signing out
+    setIsClient(false);
+    setTimeout(() => setIsClient(true), 0);
+  };
+
+  if (!isClient) {
+    return null; // or a loading spinner
+  }
 
   return (
     <header className='bg-gradient-to-r from-purple-700 via-indigo-800 to-blue-900 p-4'>
@@ -37,7 +54,11 @@ export default function Header() {
                   </Button>
                 </Link>
               )}
-              <Button onClick={signOut} variant='ghost' className='text-white'>
+              <Button
+                onClick={handleSignOut}
+                variant='ghost'
+                className='text-white'
+              >
                 Sign Out
               </Button>
             </>

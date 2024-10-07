@@ -43,9 +43,14 @@ export default function QuizPage() {
     } else if (!user.hasAccess) {
       setShowSubscriptionPrompt(true);
     } else {
-      fetchQuestions();
+      const subjectId = searchParams.get('subjectId');
+      const yearId = searchParams.get('yearId');
+      const courseId = searchParams.get('courseId');
+      if (subjectId && yearId && courseId) {
+        fetchQuestions();
+      }
     }
-  }, [user, router]);
+  }, [user, router, searchParams]);
 
   useEffect(() => {
     // Load answers from localStorage when component mounts
@@ -125,20 +130,30 @@ export default function QuizPage() {
   };
 
   const submitQuiz = async () => {
-    if (!user) {
-      console.error('User is not logged in');
-      toast.error('You must be logged in to submit a quiz');
-      return;
-    }
-
-    const score = userAnswers.reduce(
-      (total, answer, index) =>
-        answer === questions[index].answer ? total + 1 : total,
-      0
-    );
-    const percentage = (score / questions.length) * 100;
-
     try {
+      if (!user) {
+        console.error('User not authenticated');
+        toast.error('You must be logged in to submit a quiz');
+        return;
+      }
+
+      const score = questions.reduce((acc, q, index) => {
+        return acc + (userAnswers[index] === q.answer ? 1 : 0);
+      }, 0);
+
+      const total = questions.length;
+      const percentage = Math.round((score / total) * 100);
+
+      console.log('Submitting quiz with data:', {
+        userId: user.id,
+        score,
+        total,
+        percentage,
+        subjectId: searchParams.get('subjectId'),
+        yearId: searchParams.get('yearId'),
+        courseId: searchParams.get('courseId'),
+      });
+
       const response = await fetch('/api/submit-quiz', {
         method: 'POST',
         headers: {
@@ -147,21 +162,37 @@ export default function QuizPage() {
         body: JSON.stringify({
           userId: user.id,
           score,
-          total: questions.length,
+          total,
           percentage,
-          answers: userAnswers,
+          subjectId: searchParams.get('subjectId'),
+          yearId: searchParams.get('yearId'),
+          courseId: searchParams.get('courseId'),
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit quiz');
+        const errorData = await response.json();
+        console.error('Error response from server:', errorData);
+        throw new Error(errorData.error || 'Failed to submit quiz');
       }
 
-      const result = await response.json();
-      router.push(`/quiz-results?quizId=${result.quizId}`);
+      const data = await response.json();
+      console.log('Quiz submitted successfully:', data);
+
+      // Clear saved answers from localStorage
+      localStorage.removeItem('quizAnswers');
+
+      // Redirect to results page with all necessary information
+      router.push(
+        `/quiz-results?score=${score}&total=${total}&percentage=${percentage}&userAnswers=${JSON.stringify(
+          userAnswers
+        )}&subjectId=${searchParams.get('subjectId')}&yearId=${searchParams.get(
+          'yearId'
+        )}&courseId=${searchParams.get('courseId')}`
+      );
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      toast.error('Failed to submit quiz. Please try again.');
+      toast.error(`Failed to submit quiz: ${error.message}. Please try again.`);
     }
   };
 
@@ -225,10 +256,11 @@ export default function QuizPage() {
               <button
                 key={option}
                 onClick={() => handleAnswer(option)}
-                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${selectedAnswer === option
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-500'
-                  : 'bg-white bg-opacity-10 hover:bg-opacity-20'
-                  }`}
+                className={`w-full text-left text-white backdrop-filter backdrop-blur-sm rounded-xl p-3 sm:p-4 mb-3 transition-all ${
+                  selectedAnswer === option
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-500'
+                    : 'bg-white bg-opacity-10 hover:bg-opacity-20'
+                }`}
               >
                 {option}
               </button>
@@ -257,12 +289,13 @@ export default function QuizPage() {
               <button
                 key={index}
                 onClick={() => setCurrentQuestionIndex(index)}
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${currentQuestionIndex === index
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
-                  : userAnswers[index]
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full font-bold transition-all ${
+                  currentQuestionIndex === index
+                    ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                    : userAnswers[index]
                     ? 'bg-gradient-to-r from-green-400 to-blue-500 text-white'
                     : 'bg-white bg-opacity-10 text-white hover:bg-opacity-30'
-                  }`}
+                }`}
               >
                 {index + 1}
               </button>
